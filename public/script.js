@@ -31,11 +31,21 @@ let nfa_for_current_regex = null;
 let maxLengthToDisplay = 6;
 lengthInput.placeholder = maxLengthToDisplay;
 
+const maxResults = 1500; // upper limit num of generated strings to display incase maxLength is too large
+
 async function reloadPage(regTextStr) {
     // parse regTextStr
     // calls fetch("/tokenize")
-    const res = await fetch(`/tokenize?input=${regTextStr}`);
-    const tokens = await res.json();
+    let res;
+    let tokens;
+    // deal with non-json-friendly res
+    try {
+        res = await fetch(`/tokenize?input=${regTextStr}`);
+        tokens = await res.json();
+    } catch(error) {
+        console.error("Invalid JSON format:", error);
+        return;
+    }
     // now tokens is an array of objects
     nfa_for_current_regex = parseRegex(regTextStr, tokens);
 
@@ -145,11 +155,13 @@ function parseRegex(regexStr, tokens) {
             const parsedExpr = parse_expr();
             expect("RPAREN");
             return parsedExpr;
+        } else if (followToken.type === "END_OF_FILE") {
+            return makeTerminalNFA('_');
         } else {
             // ex. when the very first char/token in the expr is invalid
             // try: just consume this invalid token and try again?
             const invalidToken = getToken();
-            return parse_atom(); // or would parse_expr() be more appropriate?
+            return parse_expr(); // or would parse_atom() be more appropriate?
         }
     }
 
@@ -247,7 +259,6 @@ function updateGeneratedStrings() {
     // nfa_for_current_regex is available nfa to use
     // maxLengthToDisplay is available size limit to use
     const acceptNode = nfa_for_current_regex.accept;
-    const maxResults = 1000; // upper limit to display incase maxLength is too large
     let generatedStrings = [];
     let queue = [
         {

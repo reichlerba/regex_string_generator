@@ -41,6 +41,10 @@ int main(int argc, char* argv[]) {
     while(t.tokenType != lexer.getEOFTokenType()) {
 
         out += "{\"type\":\"" + t.tokenType.getTokenType();
+        // check if character needs to be escaped:
+        if(t.lexeme.find_first_of("\\\"") != std::string::npos) {
+            t.lexeme = ""; // clear lexeme, invalid char found
+        }
         out += "\",\"lexeme\":\"" + t.lexeme;
         out += "\"},";
 
