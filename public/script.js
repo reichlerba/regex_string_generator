@@ -1,9 +1,7 @@
 // Written by Benjamin Reichler
 // Interactive JS logic for regex string generator
 
-const { Recoverable } = require("node:repl");
-
-class Node {
+class NodeReg { // 'Node' is a reserved DOM keyword --> use NodeReg
     constructor() {
         this.transitions = []; // Transition array
     }
@@ -28,20 +26,25 @@ const lengthButton = document.getElementById("lengthButton");
 const regexInput = document.getElementById("regexInput");
 const regexOutput = document.getElementById("output");
 
-
+let nfa_for_current_regex = null;
 
 let maxLengthToDisplay = 6;
 lengthInput.placeholder = maxLengthToDisplay;
 
 
 // update regexOutput on every regexInput keypress/paste/delete
-regexInput.addEventListener("input", () => {
+regexInput.addEventListener("input", async () => {
     const regexStr = regexInput.value;
+
     // parse regexStr
-    let nfa = parseRegex(regexStr);
+    // calls fetch("/tokenize")
+    const res = await fetch(`/tokenize?input=${regexStr}`);
+    const tokens = await res.json();
+    // now tokens is an array of objects
+    nfa_for_current_regex = parseRegex(regexStr, tokens);
 
     // build generatedStrings 
-    const generatedStrings = updateGeneratedStrings(nfa);
+    const generatedStrings = updateGeneratedStrings();
 
     // update regexOutput using generatedStrings
     render(generatedStrings);
@@ -50,12 +53,7 @@ regexInput.addEventListener("input", () => {
 
 
 // turns a string into an NFA using the server
-function parseRegex(regexStr) {
-    // calls fetch("/tokenize")
-    const res = await fetch(`/tokenize?input=${regexStr}`);
-    const tokens = await res.json();
-    // now tokens is an array of objects
-
+function parseRegex(regexStr, tokens) {
     let nextToken = 0;
     function peek(howFar) {
         const tokIndex = nextToken + howFar - 1;
@@ -152,9 +150,9 @@ function parseRegex(regexStr) {
 }
 
 // build an NFA with one terminal
-function makeTerminalNFA(c) { // Char
-    const start = new Node();
-    const accept = new Node();
+function makeTerminalNFA(c) { // Char or ID
+    const start = new NodeReg();
+    const accept = new NodeReg();
     const t = new Transition(c, accept);
     start.transitions.push(t);
     return new NFA(start, accept);
@@ -166,11 +164,11 @@ function concatNFA(first, second) { // NFA, NFA
 }
 // OR two NFAs
 function unionNFA(first, second) { // NFA, NFA
-    const newStart = new Node();
+    const newStart = new NodeReg();
     newStart.transitions.push(new Transition('_', first.start));
     newStart.transitions.push(new Transition('_', second.start));
 
-    const newAccept = new Node();
+    const newAccept = new NodeReg();
     first.accept.transitions.push(new Transition('_', newAccept));
     second.accept.transitions.push(new Transition('_', newAccept));
 
@@ -178,8 +176,8 @@ function unionNFA(first, second) { // NFA, NFA
 }
 // Kleene star an NFA
 function starNFA(nfa) { // NFA 
-    const newStart = new Node();
-    const newAccept = new Node();
+    const newStart = new NodeReg();
+    const newAccept = new NodeReg();
     newStart.transitions.push(new Transition('_', nfa.start));
     newStart.transitions.push(new Transition('_', newAccept));
 
@@ -191,9 +189,92 @@ function starNFA(nfa) { // NFA
 
 
 
-// builds and returns an array of strings with length up to maxLengthToDisplay generated using input nfa
-function updateGeneratedStrings(nfa) {
+// builds and returns an array of strings with length up to maxLengthToDisplay
+function updateGeneratedStrings() {
+    // functions to traverse an nfa
+    function epsilonClosure(states) {
+        // take all epsilon ('_') transitions
+        // return new states after taking 0+ epsilon transitions
+        const stack = [...states]; // unpack states into new array
+        const result = new Set(states); // avoid duplicates with Set
+        while(stack.length > 0) { // use stack fo take epsilons trans multiple times
+            const node = stack.pop();
+            for(const t of node.transitions) {
+                if(t.label === '_' && !result.has(t.next)) {
+                    result.add(t.next);
+                    stack.push(t.next);
+                }
+            }
+        }
+        return result;
+    }
+    function getSymbols(states) {
+        // find labels on all transitions from each state in states
+        const allIDs = new Set();
+        for(const n of states) {
+            for(const t of n.transitions) {
+                if(t.label !== '_') { // leave epsilons for epsilon closure
+                    allIDs.add(t.label);
+                }
+            }
+        }
+        return allIDs;
+    }
+    function move(states, id) {
+        // return new states, from each state in states traverse the id
+        const result = new Set();
+        for(const n of states) {
+            for(const t of n.transitions) {
+                if(t.label === id) {
+                    result.add(t.next);
+                }
+            }
+        }
+        return result;
+    }
 
+    // nfa_for_current_regex is available nfa to use
+    // maxLengthToDisplay is available size limit to use
+    const acceptNode = nfa_for_current_regex.accept;
+    const maxResults = 1000; // upper limit to display incase maxLength is too large
+    let generatedStrings = [];
+    let queue = [
+        {
+            states: epsilonClosure(new Set([nfa_for_current_regex.start])),
+            str: ""
+        }
+    ]; // array of objects, where each one is a set of states and the built str so far
+
+    while(queue.length > 0 && generatedStrings.length < maxResults) {
+        const { states, str } = queue.shift();
+
+        // check if there is an accepted string
+        for(const n of states) {
+            if(n == acceptNode) {
+                generatedStrings.push(str);
+                break;
+            }
+        }
+
+        // stop expanding this branch if maxlength reached
+        if(str.length >= maxLengthToDisplay) {
+            continue;
+        }
+
+        // get ids to traverse next
+        const nextIDs = getSymbols(states);
+        for(const id of nextIDs) {
+            const nextStates = epsilonClosure(move(states, id));
+
+            if(nextStates.size > 0) {
+                queue.push({
+                    states: nextStates,
+                    str: str + id
+                });
+            }
+        }
+    }
+    return generatedStrings;
 }
 
 // output strings from generatedStrings
@@ -219,4 +300,7 @@ lengthButton.addEventListener("click", () => {
     maxLengthToDisplay = lengthInput.value;
     lengthInput.placeholder = maxLengthToDisplay
     lengthInput.value = '';
+
+    // reload regexes
+    render(updateGeneratedStrings());
 });
