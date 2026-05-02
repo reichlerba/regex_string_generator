@@ -1,6 +1,8 @@
 // Written by Benjamin Reichler
 // Interactive JS logic for regex string generator
 
+const { Recoverable } = require("node:repl");
+
 class Node {
     constructor() {
         this.transitions = []; // Transition array
@@ -56,7 +58,7 @@ function parseRegex(regexStr) {
 
     let nextToken = 0;
     function peek(howFar) {
-        const tokIndex = nextToken + howFar - 1
+        const tokIndex = nextToken + howFar - 1;
         if(tokIndex < tokens.length) {
             return tokens[tokIndex];
         } else {
@@ -65,13 +67,25 @@ function parseRegex(regexStr) {
     }
     function getToken() {
         nextToken++;
-        return tokens[nextToken - 1];
+        const tokIndex = nextToken - 1;
+        if(tokIndex < tokens.length) {
+            return tokens[tokIndex];
+        } else {
+            return tokens[tokens.length - 1]; // ends with EOF token
+        }
     }
     function expect(expectedType) {
         const followToken = getToken();
         if(followToken.type === expectedType) {
-
+            return followToken;
+        } else {
+            // syntax error
+            return recover(expectedType, followToken);
         }
+    }
+    function recover(expectedType, foundType) {
+        // add more checks later for closing parentheses, etc.
+        return { type: "NONE", recovered: true };
     }
 
     // CFG grammar for valid RegEx program input:
@@ -86,10 +100,23 @@ function parseRegex(regexStr) {
         const followToken = peek(1);
         if(followToken.type === "OR") {
             expect("OR");
-
+            const parsedExpr = parse_expr();
+            parsedTerm = unionNFA(parsedTerm, parsedExpr);
         }
+        return parsedTerm;
     }
+    function parse_term() {
 
+    }
+    function parse_factor() {
+
+    }
+    function parse_atom() {
+
+    }
+    
+
+    return parse_expr();
 }
 
 // build an NFA with one terminal
