@@ -31,23 +31,31 @@ let nfa_for_current_regex = null;
 let maxLengthToDisplay = 6;
 lengthInput.placeholder = maxLengthToDisplay;
 
-
-// update regexOutput on every regexInput keypress/paste/delete
-regexInput.addEventListener("input", async () => {
-    const regexStr = regexInput.value;
-
-    // parse regexStr
+async function reloadPage(regTextStr) {
+    // parse regTextStr
     // calls fetch("/tokenize")
-    const res = await fetch(`/tokenize?input=${regexStr}`);
+    const res = await fetch(`/tokenize?input=${regTextStr}`);
     const tokens = await res.json();
     // now tokens is an array of objects
-    nfa_for_current_regex = parseRegex(regexStr, tokens);
+    nfa_for_current_regex = parseRegex(regTextStr, tokens);
 
     // build generatedStrings 
     const generatedStrings = updateGeneratedStrings();
 
     // update regexOutput using generatedStrings
     render(generatedStrings);
+}
+
+reloadPage("(a|b)*c");
+
+// update regexOutput on every regexInput keypress/paste/delete
+regexInput.addEventListener("input", async () => {
+    let regexStr = regexInput.value;
+    if(regexStr.trim().length === 0) {
+        regexStr = '_';
+    }
+
+    reloadPage(regexStr);
 });
 
 
@@ -90,7 +98,7 @@ function parseRegex(regexStr, tokens) {
     // expr -> term | term OR expr ;
     // term -> factor | factor term ;
     // factor -> atom | atom STAR ;
-    // atom -> LPAREN expr RPAREN | ID ;
+    // atom -> LPAREN expr RPAREN | ID | UNDRSC ;
     
     // parsing functions are only relevant to parseRegex so they will live here
     function parse_expr() {
@@ -107,8 +115,8 @@ function parseRegex(regexStr, tokens) {
         let parsedFactor = parse_factor();
         const followToken = peek(1);
         // FOLLOW(term) = { OR, EOF, RPAREN }
-        // FIRST(term) = { LPAREN, ID }
-        if(followToken.type === "LPAREN" || followToken.type === "ID") {
+        // FIRST(term) = { LPAREN, ID, UNDRSC }
+        if(followToken.type === "LPAREN" || followToken.type === "ID" || followToken.type === "UNDRSC") {
             // term --> factor term
             const termFactor = parse_term();
             // concatonate termFactor to end of parsedFactor
@@ -128,7 +136,10 @@ function parseRegex(regexStr, tokens) {
         const followToken = peek(1);
         if(followToken.type === "ID") {
             expect("ID");
-            return makeTerminalNFA(followToken.lexeme)
+            return makeTerminalNFA(followToken.lexeme);
+        } else if(followToken.type === "UNDRSC") {
+            expect("UNDRSC");
+            return makeTerminalNFA('_');
         } else if(followToken.type === "LPAREN") {
             expect("LPAREN");
             const parsedExpr = parse_expr();
@@ -280,11 +291,23 @@ function updateGeneratedStrings() {
 // output strings from generatedStrings
 function render(generatedStrings) {
     regexOutput.textContent = '';
-    generatedStrings.forEach((nextStr) => {
-        const p = document.createElement("p");
-        p.textContent = nextStr;
-        regexOutput.appendChild(p);
-    });
+    for(const nextStr of generatedStrings) {
+        // long IDs may push a certain string over maxLengthToDisplay
+        // manually enforce size limits
+        if(nextStr.length > maxLengthToDisplay) {
+            continue;
+        }
+        // handle epsilon generated manually
+        if(nextStr.length === 0) {
+            const p = document.createElement("p");
+            p.textContent = '_';
+            regexOutput.appendChild(p);
+        } else {
+            const p = document.createElement("p");
+            p.textContent = nextStr;
+            regexOutput.appendChild(p);
+        }
+    }
 }
 
 

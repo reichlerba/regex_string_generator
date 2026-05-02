@@ -19,8 +19,8 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    std::vector<std::string> tokenTypeNames = { "OR", "STAR", "LPAREN", "RPAREN", "ID" };
-    std::vector<std::string> tokenRegexes = { R"(\|)", R"(\*)", R"(\()", R"(\))", R"([a-zA-Z0-9_-]+)" };
+    std::vector<std::string> tokenTypeNames = { "OR", "STAR", "LPAREN", "RPAREN", "UNDRSC", "ID" };
+    std::vector<std::string> tokenRegexes = { R"(\|)", R"(\*)", R"(\()", R"(\))", R"(_)", R"([a-zA-Z0-9-]+)" };
 
     // this isn't necessary because execFile in server.js always executes the file with a single argument
     // make sure input string isn't accidentally split across different args
