@@ -10,7 +10,7 @@ class Node {
 }
 class Transition {
     constructor(l, n) {
-        this.label = l; // Char ; == '_' is treated as epsilon
+        this.label = l; // Char or ID ; == '_' is treated as epsilon
         this.next = n; // Node
     }
 }
@@ -106,17 +106,49 @@ function parseRegex(regexStr) {
         return parsedTerm;
     }
     function parse_term() {
-
+        let parsedFactor = parse_factor();
+        const followToken = peek(1);
+        // FOLLOW(term) = { OR, EOF, RPAREN }
+        // FIRST(term) = { LPAREN, ID }
+        if(followToken.type === "LPAREN" || followToken.type === "ID") {
+            // term --> factor term
+            const termFactor = parse_term();
+            // concatonate termFactor to end of parsedFactor
+            parsedFactor = concatNFA(parsedFactor, termFactor);
+        }
+        return parsedFactor;
     }
     function parse_factor() {
-
+        const parsedAtom = parse_atom();
+        if(peek(1).type === "STAR") {
+            expect("STAR");
+            return starNFA(parsedAtom);
+        }
+        return parsedAtom;
     }
     function parse_atom() {
-
+        const followToken = peek(1);
+        if(followToken.type === "ID") {
+            expect("ID");
+            return makeTerminalNFA(followToken.lexeme)
+        } else if(followToken.type === "LPAREN") {
+            expect("LPAREN");
+            const parsedExpr = parse_expr();
+            expect("RPAREN");
+            return parsedExpr;
+        } else {
+            // ex. when the very first char/token in the expr is invalid
+            // try: just consume this invalid token and try again?
+            const invalidToken = getToken();
+            return parse_atom(); // or would parse_expr() be more appropriate?
+        }
     }
-    
+
 
     return parse_expr();
+    // In appropriate input, EOF isn reached after parsing an expr
+    // If it is not reached, we will choose to
+    // ignore the rest of the unusued, invalid tokens
 }
 
 // build an NFA with one terminal
