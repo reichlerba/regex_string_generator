@@ -1,0 +1,3 @@
+[submodule "tokenizer/lexer"]
+	path = tokenizer/lexer
+	url = https://github.com/reichlerba/lexical_analyzer

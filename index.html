@@ -1,0 +1,31 @@
+<!-- Written by Benjamin Reichler -->
+<!-- HTML for regex string generator -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewpoint" content="width=device-width, initial-scale=1.0" />
+    <title>Regex Generator</title>
+
+    <!-- this is for the CSS -->
+     <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+    <h1>Define a regular expression to see strings in the language</h1>
+
+    <label for="regexInput">Regular Expression</label>
+    <input type="text" id="regexInput" name="regex" placeholder="(a|b)*c"> <!-- start off with this text box with the text actually inputted equal to this placeholder text, but since the regex shown updates real time without submitting this textbox, when the box is empty and placeholder is being shown we just show the empty language -->
+
+    <br>
+
+    <label for="lengthInput">Show strings up to length:</label>
+    <input type="number" id="lengthInput" name="length" placeholder=6/> <!-- always update placeholder in JS to = whatever was last submitted / is currently being used -->
+    <button id="lengthButton">Select</button>
+
+    <p id="output"></p>
+
+    <!-- load JS code at end so DOM loads first -->
+     <script src="script.js"></script>
+</body>
+</html>

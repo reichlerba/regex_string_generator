@@ -1,0 +1,13 @@
+/* Written by Benjamin Reichler */
+/* Styling for regex string generator */
+
+body {
+    font-family: Arial, sans-serif;
+    padding: 20px;
+}
+
+button {
+    padding: 3px 3px;
+    font-size: 14px;
+    cursor: pointer;
+}
