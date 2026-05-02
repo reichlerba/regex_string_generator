@@ -52,12 +52,44 @@ function parseRegex(regexStr) {
     // calls fetch("/tokenize")
     const res = await fetch(`/tokenize?input=${regexStr}`);
     const tokens = await res.json();
+    // now tokens is an array of objects
 
-    return buildNFAFromTokens(tokens);
-}
+    let nextToken = 0;
+    function peek(howFar) {
+        const tokIndex = nextToken + howFar - 1
+        if(tokIndex < tokens.length) {
+            return tokens[tokIndex];
+        } else {
+            return tokens[tokens.length - 1]; // ends with EOF token
+        }
+    }
+    function getToken() {
+        nextToken++;
+        return tokens[nextToken - 1];
+    }
+    function expect(expectedType) {
+        const followToken = getToken();
+        if(followToken.type === expectedType) {
 
-function buildNFAFromTokens(tokens) {
+        }
+    }
+
+    // CFG grammar for valid RegEx program input:
+    // expr -> term | term OR expr ;
+    // term -> factor | factor term ;
+    // factor -> atom | atom STAR ;
+    // atom -> LPAREN expr RPAREN | ID ;
     
+    // parsing functions are only relevant to parseRegex so they will live here
+    function parse_expr() {
+        let parsedTerm = parse_term();
+        const followToken = peek(1);
+        if(followToken.type === "OR") {
+            expect("OR");
+
+        }
+    }
+
 }
 
 // build an NFA with one terminal

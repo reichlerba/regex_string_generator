@@ -22,6 +22,7 @@ int main(int argc, char* argv[]) {
     std::vector<std::string> tokenTypeNames = { "OR", "STAR", "LPAREN", "RPAREN", "ID" };
     std::vector<std::string> tokenRegexes = { R"(\|)", R"(\*)", R"(\()", R"(\))", R"([a-zA-Z0-9_-]+)" };
 
+    // this isn't necessary because execFile in server.js always executes the file with a single argument
     // make sure input string isn't accidentally split across different args
     std::string in = argv[1];
     for(int i = 2; i < argc; i++) {
@@ -37,20 +38,20 @@ int main(int argc, char* argv[]) {
 
     std::string out = "[";
     Token t = lexer.getToken();
-    bool notFirstToken = false;
     while(t.tokenType != lexer.getEOFTokenType()) {
-        if(notFirstToken) {
-            out += ",";
-        } else {
-            notFirstToken = true;
-        }
 
         out += "{\"type\":\"" + t.tokenType.getTokenType();
         out += "\",\"lexeme\":\"" + t.lexeme;
-        out += "\"}";
+        out += "\"},";
 
         t = lexer.getToken();
     }
+    // t is EOF, end out with EOF token
+    out += "{\"type\":\"" + t.tokenType.getTokenType();
+    out += "\",\"lexeme\":\"" + t.lexeme;
+    out += "\"}";
+
+    // close JSON
     out += "]";
 
     std::cout << out << std::endl;
