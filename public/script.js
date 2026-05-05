@@ -63,6 +63,7 @@ regexInput.addEventListener("input", async () => {
     let regexStr = regexInput.value;
     if(regexStr.trim().length === 0) {
         regexStr = '_';
+        regexInput.placeholder = '_'
     }
 
     reloadPage(regexStr);
